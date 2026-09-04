@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shajara — Oilaviy daraxt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#14171E; --bg-soft:#1B1F28; --bg-card:#232833; --bg-card-hi:#2A303C;
+    --line:#333947; --line-soft:#282D38;
+    --ink:#EEE8DC; --ink-dim:#9B9689; --ink-faint:#68697A;
+    --gold:#C9A961; --gold-hi:#DDBE7C; --gold-dim:#8B6F3E;
+    --rose:#C17E90; --blue:#6E93B4; --danger:#C1616B; --danger-hi:#D97D86;
+    --r-lg:26px; --r-md:16px; --r-sm:10px;
+    --shadow: 0 24px 60px -24px rgba(0,0,0,.65);
+    --font-display:'Fraunces', serif; --font-body:'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #1E2330 0%, transparent 60%),
+      radial-gradient(1000px 700px at 110% 10%, #1B222C 0%, transparent 55%),
+      var(--bg);
+    color:var(--ink); font-family:var(--font-body); -webkit-font-smoothing:antialiased; overflow:hidden;
+  }
+  ::selection{ background:var(--gold); color:#1a1a1a; }
+  button{ font-family:inherit; cursor:pointer; }
+  input, select{ font-family:inherit; }
+  :focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+
+  #app{ position:relative; width:100vw; height:100vh; }
+  .screen{ position:absolute; inset:0; display:none; }
+  .screen.active{ display:block; }
+
+  /* ---------- AUTH ---------- */
+  #screen-auth.active{ display:flex; align-items:center; justify-content:center; }
+  .auth-card{
+    width:100%; max-width:380px; background:var(--bg-soft); border:1px solid var(--line);
+    border-radius:var(--r-lg); padding:38px 34px; box-shadow:var(--shadow);
+  }
+  .auth-brand{ text-align:center; margin-bottom:28px; }
+  .auth-brand .brand{ font-family:var(--font-display); font-weight:600; font-size:34px; margin:0; }
+  .auth-brand .rule{ width:44px; height:2px; background:var(--gold); margin:14px auto; border-radius:2px; }
+  .tabs{ display:flex; gap:6px; background:var(--bg-card); border-radius:999px; padding:4px; margin-bottom:24px; }
+  .tabs button{ flex:1; padding:9px; border:none; border-radius:999px; background:none; color:var(--ink-faint); font-size:13.5px; font-weight:600; transition:all .18s; }
+  .tabs button.active{ background:var(--gold); color:#1a1a1a; }
+  .auth-error{
+    background:rgba(193,97,107,.12); border:1px solid rgba(193,97,107,.4); color:var(--danger-hi);
+    font-size:12.5px; padding:10px 12px; border-radius:var(--r-sm); margin-bottom:16px; display:none;
+  }
+  .auth-error.show{ display:block; }
+  .auth-note{ text-align:center; font-size:12px; color:var(--ink-faint); margin-top:16px; line-height:1.6; }
+
+  /* ---------- HOME ---------- */
+  #screen-home{ overflow-y:auto; }
+  .home-topbar{
+    display:flex; align-items:center; justify-content:flex-end; gap:12px;
+    padding:22px 32px 0; max-width:1100px; margin:0 auto;
+  }
+  .user-pill{
+    display:flex; align-items:center; gap:10px; background:var(--bg-card); border:1px solid var(--line);
+    border-radius:999px; padding:7px 8px 7px 16px; font-size:12.5px; color:var(--ink-dim);
+  }
+  .user-pill button{
+    background:var(--bg-card-hi); border:1px solid var(--line); color:var(--ink-dim);
+    border-radius:999px; padding:6px 14px; font-size:12px; font-weight:600;
+  }
+  .user-pill button:hover{ color:var(--ink); border-color:var(--gold-dim); }
+  .home-wrap{ max-width:1100px; margin:0 auto; padding:24px 32px 100px; }
+  .home-header{ text-align:center; margin-bottom:64px; }
+  .home-header .brand{ font-family:var(--font-display); font-weight:600; font-size:clamp(40px,6vw,64px); letter-spacing:.5px; margin:0; }
+  .home-header .rule{ width:64px; height:2px; margin:22px auto; background:var(--gold); border-radius:2px; }
+  .home-header .tagline{ font-style:italic; color:var(--ink-dim); font-size:16px; margin:0; font-family:var(--font-display); }
+
+  .trees-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(148px,1fr)); gap:44px 28px; }
+  .tree-card{ display:flex; flex-direction:column; align-items:center; gap:14px; position:relative; }
+  .tree-circle{
+    width:120px; height:120px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    border:1px solid var(--line); font-family:var(--font-display); font-weight:600; font-size:38px; color:var(--gold-hi);
+    cursor:pointer; position:relative; transition:transform .28s cubic-bezier(.22,1,.36,1), box-shadow .28s, border-color .28s;
+  }
+  .tree-circle:hover{ transform:translateY(-5px); border-color:var(--gold-dim); box-shadow:var(--shadow); }
+  .tree-card .tname{ font-weight:600; font-size:15px; text-align:center; }
+  .tree-card .tmeta{ font-size:12px; color:var(--ink-faint); }
+  .tree-del{
+    position:absolute; top:-4px; right:6px; width:26px; height:26px; border-radius:50%;
+    background:var(--bg-card); border:1px solid var(--line); color:var(--ink-dim);
+    display:flex; align-items:center; justify-content:center; font-size:14px; line-height:1;
+    opacity:0; transition:opacity .2s, background .2s, color .2s;
+  }
+  .tree-card:hover .tree-del{ opacity:1; }
+  .tree-del:hover{ background:var(--danger); color:#fff; border-color:var(--danger); }
+  .add-tree-circle{
+    width:120px; height:120px; border-radius:50%; border:1.5px dashed var(--line);
+    display:flex; align-items:center; justify-content:center; color:var(--ink-faint); font-size:30px;
+    cursor:pointer; transition:border-color .25s, color .25s, transform .25s;
+  }
+  .add-tree-circle:hover{ border-color:var(--gold); color:var(--gold); transform:translateY(-5px); }
+
+  /* ---------- TREE VIEW ---------- */
+  #screen-tree.active{ display:flex; flex-direction:column; }
+  .tree-topbar{
+    display:flex; align-items:center; gap:18px; padding:20px 28px; border-bottom:1px solid var(--line-soft);
+    background:linear-gradient(var(--bg-soft), rgba(27,31,40,.85)); z-index:5;
+  }
+  .icon-btn{
+    width:40px; height:40px; border-radius:50%; border:1px solid var(--line); background:var(--bg-card);
+    color:var(--ink); display:flex; align-items:center; justify-content:center; font-size:18px;
+    transition:background .2s, border-color .2s, transform .15s; flex-shrink:0;
+  }
+  .icon-btn:hover{ background:var(--bg-card-hi); border-color:var(--gold-dim); }
+  .icon-btn:active{ transform:scale(.94); }
+  .tree-title-wrap{ flex:1; min-width:0; }
+  .tree-title{
+    font-family:var(--font-display); font-weight:600; font-size:26px; margin:0; cursor:text;
+    display:inline-block; border-bottom:1px solid transparent; max-width:100%; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap;
+  }
+  .tree-title:hover{ border-bottom-color:var(--line); }
+  .tree-sub{ color:var(--ink-faint); font-size:12.5px; margin-top:2px; }
+  .zoom-controls{ display:flex; align-items:center; gap:6px; }
+  .zoom-controls .icon-btn{ font-size:16px; }
+  .zoom-pct{ font-size:12px; color:var(--ink-faint); width:42px; text-align:center; }
+
+  .tree-viewport{
+    flex:1; position:relative; overflow:hidden; cursor:grab;
+    background-image: radial-gradient(circle, rgba(255,255,255,.035) 1px, transparent 1px);
+    background-size: 26px 26px;
+  }
+  .tree-viewport.grabbing{ cursor:grabbing; }
+  #treeInner{ position:absolute; left:0; top:0; transform-origin:0 0; }
+  #treeSvg{ position:absolute; left:0; top:0; overflow:visible; pointer-events:none; }
+  .link-line{ stroke:var(--line); stroke-width:2; fill:none; }
+  .link-line.lineage{ stroke:var(--gold-dim); }
+  .spouse-line{ stroke:var(--gold-dim); stroke-width:2; }
+  .spouse-dot{ fill:var(--bg); stroke:var(--gold); stroke-width:2; }
+
+  .person{ position:absolute; width:150px; display:flex; flex-direction:column; align-items:center; transform:translate(-50%,-50%); }
+  .avatar-wrap{ position:relative; }
+  .avatar{
+    width:84px; height:84px; border-radius:50%; border:2.5px solid var(--blue); background:var(--bg-card);
+    overflow:hidden; display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-weight:600; font-size:26px; color:var(--ink);
+    cursor:pointer; transition:transform .2s, box-shadow .2s;
+  }
+  .avatar.f{ border-color:var(--rose); }
+  .avatar:hover{ transform:scale(1.05); box-shadow:0 10px 30px -12px rgba(0,0,0,.7); }
+  .avatar img{ width:100%; height:100%; object-fit:cover; }
+  .add-rel-btn{
+    position:absolute; right:-2px; bottom:-2px; width:26px; height:26px; border-radius:50%;
+    background:var(--gold); color:#1a1a1a; border:2px solid var(--bg-soft);
+    display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700; line-height:1;
+    transition:transform .15s, background .2s;
+  }
+  .add-rel-btn:hover{ background:var(--gold-hi); transform:scale(1.1); }
+  .p-name{ margin-top:10px; font-weight:600; font-size:14px; text-align:center; line-height:1.25; }
+  .p-meta{ font-size:11.5px; color:var(--ink-faint); text-align:center; margin-top:2px; }
+
+  .empty-state{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; text-align:center; padding:20px; }
+  .empty-state p{ color:var(--ink-dim); max-width:320px; font-size:14.5px; margin:0; }
+  .empty-state .glyph{ font-family:var(--font-display); font-size:52px; color:var(--gold-dim); }
+
+  .loading-state{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--ink-faint); font-size:13.5px; }
+
+  .btn{ padding:12px 22px; border-radius:999px; border:1px solid var(--gold-dim); background:transparent; color:var(--gold-hi); font-weight:600; font-size:14px; transition:background .2s, color .2s, transform .15s; }
+  .btn:hover{ background:var(--gold); color:#1a1a1a; }
+  .btn:active{ transform:scale(.97); }
+  .btn:disabled{ opacity:.55; cursor:not-allowed; }
+  .btn.primary{ background:var(--gold); color:#1a1a1a; width:100%; }
+  .btn.primary:hover{ background:var(--gold-hi); }
+  .btn.ghost{ border-color:var(--line); color:var(--ink-dim); }
+  .btn.ghost:hover{ background:var(--bg-card-hi); color:var(--ink); }
+  .btn.danger{ border-color:var(--danger); color:var(--danger-hi); }
+  .btn.danger:hover{ background:var(--danger); color:#fff; }
+
+  .popover{
+    position:fixed; z-index:60; background:var(--bg-card); border:1px solid var(--line); border-radius:var(--r-sm);
+    box-shadow:var(--shadow); padding:6px; min-width:190px; animation:pop-in .16s cubic-bezier(.22,1,.36,1);
+  }
+  @keyframes pop-in{ from{opacity:0; transform:scale(.92) translateY(-4px);} to{opacity:1; transform:scale(1) translateY(0);} }
+  .popover button{ display:flex; align-items:center; gap:10px; width:100%; text-align:left; padding:10px 12px; background:none; border:none; color:var(--ink); font-size:13.5px; border-radius:8px; }
+  .popover button:hover{ background:var(--bg-card-hi); }
+  .popover .pop-ic{ width:18px; text-align:center; color:var(--gold); }
+
+  .overlay{ position:fixed; inset:0; background:rgba(10,11,15,.68); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; z-index:100; padding:20px; }
+  .overlay.active{ display:flex; }
+  .modal{
+    width:100%; max-width:420px; background:var(--bg-soft); border:1px solid var(--line); border-radius:var(--r-lg);
+    padding:32px; box-shadow:var(--shadow); animation:modal-in .22s cubic-bezier(.22,1,.36,1); max-height:88vh; overflow-y:auto;
+  }
+  @keyframes modal-in{ from{opacity:0; transform:translateY(14px) scale(.98);} to{opacity:1; transform:translateY(0) scale(1);} }
+  .modal h2{ font-family:var(--font-display); font-weight:600; font-size:23px; margin:0 0 6px; }
+  .modal .modal-sub{ color:var(--ink-faint); font-size:13px; margin:0 0 24px; }
+  .field{ margin-bottom:16px; }
+  .field label{ display:block; font-size:12.5px; color:var(--ink-dim); margin-bottom:7px; font-weight:500; }
+  .field input[type=text], .field input[type=email], .field input[type=password], .field input[type=number], .field select{
+    width:100%; padding:11px 14px; border-radius:var(--r-sm); border:1px solid var(--line); background:var(--bg-card);
+    color:var(--ink); font-size:14px; transition:border-color .2s;
+  }
+  .field input:focus, .field select:focus{ border-color:var(--gold-dim); outline:none; }
+  .gender-toggle{ display:flex; gap:8px; }
+  .gender-toggle button{ flex:1; padding:10px; border-radius:var(--r-sm); border:1px solid var(--line); background:var(--bg-card); color:var(--ink-dim); font-size:13.5px; font-weight:500; transition:all .18s; }
+  .gender-toggle button.sel[data-g="M"]{ background:rgba(110,147,180,.18); border-color:var(--blue); color:#BFD6E9; }
+  .gender-toggle button.sel[data-g="F"]{ background:rgba(193,126,144,.18); border-color:var(--rose); color:#E9C4CE; }
+  .photo-row{ display:flex; align-items:center; gap:16px; }
+  .photo-preview{ width:64px; height:64px; border-radius:50%; background:var(--bg-card); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; font-family:var(--font-display); color:var(--ink-faint); font-size:20px; }
+  .photo-preview img{ width:100%; height:100%; object-fit:cover; }
+  .file-btn{ padding:9px 16px; border-radius:999px; border:1px solid var(--line); background:var(--bg-card); color:var(--ink-dim); font-size:12.5px; position:relative; overflow:hidden; }
+  .file-btn:hover{ border-color:var(--gold-dim); color:var(--ink); }
+  .file-btn input{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+  .modal-actions{ display:flex; gap:10px; margin-top:26px; }
+  .modal-actions .btn{ flex:1; }
+  .modal-foot{ margin-top:14px; text-align:center; }
+  .modal-foot button{ background:none; border:none; color:var(--ink-faint); font-size:12.5px; text-decoration:underline; }
+  .modal-foot button:hover{ color:var(--danger-hi); }
+  .hidden{ display:none !important; }
+  ::-webkit-scrollbar{ width:10px; height:10px; }
+  ::-webkit-scrollbar-thumb{ background:var(--line); border-radius:10px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+
+  .setup-warning{
+    position:fixed; inset:0; z-index:200; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .setup-warning .box{ max-width:520px; background:var(--bg-soft); border:1px solid var(--danger); border-radius:var(--r-lg); padding:32px; }
+  .setup-warning h2{ font-family:var(--font-display); margin-top:0; }
+  .setup-warning code{ background:var(--bg-card); padding:2px 6px; border-radius:6px; color:var(--gold-hi); }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ============ AUTH ============ -->
+  <section id="screen-auth" class="screen active">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <h1 class="brand">Shajara</h1>
+        <div class="rule"></div>
+      </div>
+      <div class="tabs">
+        <button class="active" id="tabLogin">Kirish</button>
+        <button id="tabRegister">Ro'yxatdan o'tish</button>
+      </div>
+      <div class="auth-error" id="authError"></div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="authEmail" placeholder="email@misol.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label>Parol</label>
+        <input type="password" id="authPassword" placeholder="Kamida 6 belgi" autocomplete="current-password">
+      </div>
+      <button class="btn primary" id="btnAuthSubmit">Kirish</button>
+      <p class="auth-note" id="authNote">Hisobingiz yo'qmi? Yuqoridagi "Ro'yxatdan o'tish" tugmasini bosing.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOME ============ -->
+  <section id="screen-home" class="screen">
+    <div class="home-topbar">
+      <div class="user-pill">
+        <span id="userEmailLabel"></span>
+        <button id="btnLogout">Chiqish</button>
+      </div>
+    </div>
+    <div class="home-wrap">
+      <div class="home-header">
+        <h1 class="brand">Shajara</h1>
+        <div class="rule"></div>
+        <p class="tagline">Har bir ism — bir hikoya, har bir shajara — bir meros</p>
+      </div>
+      <div class="trees-grid" id="treesGrid"></div>
+    </div>
+  </section>
+
+  <!-- ============ TREE VIEW ============ -->
+  <section id="screen-tree" class="screen">
+    <div class="tree-topbar">
+      <button class="icon-btn" id="btnBack" title="Orqaga">←</button>
+      <div class="tree-title-wrap">
+        <h2 class="tree-title" id="treeTitle" title="Nomini o'zgartirish uchun bosing"></h2>
+        <div class="tree-sub" id="treeSub"></div>
+      </div>
+      <div class="zoom-controls">
+        <button class="icon-btn" id="btnZoomOut" title="Kichraytirish">−</button>
+        <span class="zoom-pct" id="zoomPct">100%</span>
+        <button class="icon-btn" id="btnZoomIn" title="Kattalashtirish">+</button>
+        <button class="icon-btn" id="btnZoomReset" title="Markazlash" style="font-size:14px;">⤾</button>
+      </div>
+    </div>
+    <div class="tree-viewport" id="treeViewport">
+      <div id="treeInner"><svg id="treeSvg"></svg></div>
+      <div class="empty-state hidden" id="emptyState">
+        <div class="glyph">✦</div>
+        <p>Bu shajara hali bo'sh. Sulolangizning birinchi ajdodini qo'shib, daraxtni boshlang.</p>
+        <button class="btn primary" style="width:auto;" id="btnAddFounder">+ Asoschini qo'shish</button>
+      </div>
+      <div class="loading-state hidden" id="treeLoading">Yuklanmoqda...</div>
+    </div>
+  </section>
+
+</div>
+
+<div class="popover hidden" id="relPopover"></div>
+
+<div class="overlay" id="overlayNewTree">
+  <div class="modal">
+    <h2>Yangi shajara</h2>
+    <p class="modal-sub">Sulola yoki oila nomini kiriting</p>
+    <div class="field"><label>Sulola nomi</label><input type="text" id="newTreeName" placeholder="Masalan: Hakimovlar"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" data-close="overlayNewTree">Bekor qilish</button>
+      <button class="btn primary" style="width:auto;" id="btnCreateTree">Yaratish</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlayPerson">
+  <div class="modal">
+    <h2 id="personFormTitle">Shaxs qo'shish</h2>
+    <p class="modal-sub" id="personFormSub"></p>
+    <div class="field" id="fieldGender">
+      <label>Jinsi</label>
+      <div class="gender-toggle"><button type="button" data-g="M" id="genderM">Erkak</button><button type="button" data-g="F" id="genderF">Ayol</button></div>
+    </div>
+    <div class="field"><label>Ismi</label><input type="text" id="personFirstName" placeholder="Ism"></div>
+    <div class="field"><label>Familiyasi (ixtiyoriy)</label><input type="text" id="personLastName" placeholder="Familiya"></div>
+    <div class="field"><label>Tug'ilgan yili (ixtiyoriy)</label><input type="text" id="personYear" placeholder="Masalan: 1978"></div>
+    <div class="field">
+      <label>Rasmi (ixtiyoriy)</label>
+      <div class="photo-row">
+        <div class="photo-preview" id="photoPreview">—</div>
+        <label class="file-btn">Rasm tanlash<input type="file" accept="image/*" id="photoInput"></label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" data-close="overlayPerson">Bekor qilish</button>
+      <button class="btn primary" style="width:auto;" id="btnSavePerson">Saqlash</button>
+    </div>
+    <div class="modal-foot hidden" id="deleteRow"><button id="btnDeletePerson">Bu shaxsni o'chirish</button></div>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   SOZLASH (SETUP): Supabase loyihangizni yaratgach, quyidagi ikki qiymatni
+   almashtiring. Qo'llanma javobning oxirida.
+   ========================================================================= */
+const SUPABASE_URL = "YOUR_SUPABASE_URL";
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+
+(function(){
+  "use strict";
+
+  if(SUPABASE_URL.indexOf('YOUR_SUPABASE_URL') !== -1 || SUPABASE_ANON_KEY.indexOf('YOUR_SUPABASE_ANON_KEY') !== -1){
+    document.body.innerHTML = `<div class="setup-warning"><div class="box">
+      <h2>Sozlash kerak</h2>
+      <p>Ushbu sayt ishlashi uchun avval Supabase loyihasini yaratib, faylning yuqorisidagi
+      <code>SUPABASE_URL</code> va <code>SUPABASE_ANON_KEY</code> qiymatlarini o'zingiznikiga almashtiring.
+      Qo'llanma javob oxirida berilgan.</p>
+    </div></div>`;
+    return;
+  }
+
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  let currentUser = null;
+  let db = { trees: [] };
+
+  function uid(){ return 'id_' + Date.now().toString(36) + Math.random().toString(36).slice(2,9); }
+  function initials(first, last){
+    const a = (first||'').trim()[0] || ''; const b = (last||'').trim()[0] || '';
+    return (a+b).toUpperCase() || '?';
+  }
+  function fullName(p){ return [p.firstName, p.lastName].filter(Boolean).join(' '); }
+  function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
+  const PALETTES = [
+    ['#3A3020','#C9A961'], ['#20303A','#6E93B4'], ['#3A2028','#C17E90'],
+    ['#2A3A28','#8FAE7E'], ['#332438','#A889C4'], ['#3A2F20','#D0A85C']
+  ];
+  function paletteFor(name){
+    let h = 0; for(let i=0;i<name.length;i++) h = (h*31 + name.charCodeAt(i)) >>> 0;
+    return PALETTES[h % PALETTES.length];
+  }
+  function resizeImage(file, maxSize, cb){
+    const reader = new FileReader();
+    reader.onload = function(e){
+      const img = new Image();
+      img.onload = function(){
+        let w = img.width, h = img.height;
+        if(w > h){ if(w > maxSize){ h = Math.round(h * maxSize / w); w = maxSize; } }
+        else{ if(h > maxSize){ w = Math.round(w * maxSize / h); h = maxSize; } }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        cb(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+  function closeOverlay(id){ document.getElementById(id).classList.remove('active'); }
+  function openOverlay(id){ document.getElementById(id).classList.add('active'); }
+  document.querySelectorAll('[data-close]').forEach(btn=>{ btn.addEventListener('click', ()=> closeOverlay(btn.dataset.close)); });
+  document.querySelectorAll('.overlay').forEach(ov=>{ ov.addEventListener('mousedown', (e)=>{ if(e.target === ov) closeOverlay(ov.id); }); });
+
+  /* ===================== AUTH ===================== */
+  const screenAuth = document.getElementById('screen-auth');
+  const screenHome = document.getElementById('screen-home');
+  const screenTree = document.getElementById('screen-tree');
+  function showScreen(name){
+    screenAuth.classList.toggle('active', name==='auth');
+    screenHome.classList.toggle('active', name==='home');
+    screenTree.classList.toggle('active', name==='tree');
+  }
+
+  let authMode = 'login';
+  const tabLogin = document.getElementById('tabLogin');
+  const tabRegister = document.getElementById('tabRegister');
+  const authError = document.getElementById('authError');
+  const authNote = document.getElementById('authNote');
+  const btnAuthSubmit = document.getElementById('btnAuthSubmit');
+
+  function setAuthMode(mode){
+    authMode = mode;
+    tabLogin.classList.toggle('active', mode==='login');
+    tabRegister.classList.toggle('active', mode==='register');
+    btnAuthSubmit.textContent = mode==='login' ? 'Kirish' : "Ro'yxatdan o'tish";
+    authNote.textContent = mode==='login'
+      ? "Hisobingiz yo'qmi? Yuqoridagi \"Ro'yxatdan o'tish\" tugmasini bosing."
+      : "Hisobingiz bormi? Yuqoridagi \"Kirish\" tugmasini bosing.";
+    authError.classList.remove('show');
+  }
+  tabLogin.addEventListener('click', ()=>setAuthMode('login'));
+  tabRegister.addEventListener('click', ()=>setAuthMode('register'));
+
+  function showAuthError(msg){ authError.textContent = msg; authError.classList.add('show'); }
+
+  btnAuthSubmit.addEventListener('click', async ()=>{
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    if(!email || !password){ showAuthError("Email va parolni kiriting"); return; }
+    btnAuthSubmit.disabled = true;
+    authError.classList.remove('show');
+    try{
+      if(authMode === 'login'){
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if(error) throw error;
+      }else{
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if(error) throw error;
+        if(data.user && !data.session){
+          showAuthError("Ro'yxatdan o'tdingiz. Emailingizni tasdiqlagach kiring (yoki Supabase sozlamalarida email tasdiqni o'chirib qo'ying).");
+          btnAuthSubmit.disabled = false;
+          return;
+        }
+      }
+      await onAuthed();
+    }catch(err){
+      showAuthError(err.message || "Xatolik yuz berdi");
+    }finally{
+      btnAuthSubmit.disabled = false;
+    }
+  });
+
+  document.getElementById('btnLogout').addEventListener('click', async ()=>{
+    await supabase.auth.signOut();
+    currentUser = null; db = { trees: [] };
+    showScreen('auth');
+  });
+
+  async function onAuthed(){
+    const { data:{ user } } = await supabase.auth.getUser();
+    currentUser = user;
+    document.getElementById('userEmailLabel').textContent = user.email;
+    showScreen('home');
+    await refreshHome();
+  }
+
+  /* ===================== HOME ===================== */
+  const treesGrid = document.getElementById('treesGrid');
+
+  async function refreshHome(){
+    treesGrid.innerHTML = `<div class="loading-state" style="position:static;">Yuklanmoqda...</div>`;
+    const { data: treeRows, error: e1 } = await supabase.from('trees').select('*').order('created_at');
+    if(e1){ treesGrid.innerHTML = ''; alert('Xatolik: ' + e1.message); return; }
+    const { data: personRows } = await supabase.from('persons').select('id,tree_id');
+    const counts = {};
+    (personRows||[]).forEach(r=>{ counts[r.tree_id] = (counts[r.tree_id]||0) + 1; });
+
+    db.trees = (treeRows||[]).map(r => ({ id:r.id, name:r.name, rootId:r.root_id, persons:{}, _count: counts[r.id]||0 }));
+    renderHome();
+  }
+
+  function renderHome(){
+    treesGrid.innerHTML = '';
+    db.trees.forEach(tree=>{
+      const card = document.createElement('div');
+      card.className = 'tree-card';
+      const [c1,c2] = paletteFor(tree.name);
+      card.innerHTML = `
+        <div class="tree-del" title="O'chirish">×</div>
+        <div class="tree-circle" style="background:radial-gradient(circle at 32% 28%, ${c1}, #171A22 76%); border-color:${c2}55;">${initials(tree.name,'')}</div>
+        <div class="tname">${escapeHtml(tree.name)}</div>
+        <div class="tmeta">${tree._count} kishi</div>
+      `;
+      card.querySelector('.tree-circle').addEventListener('click', ()=> openTree(tree.id));
+      card.querySelector('.tree-del').addEventListener('click', async (e)=>{
+        e.stopPropagation();
+        if(confirm(`"${tree.name}" shajarasini butunlay o'chirmoqchimisiz?`)){
+          const { error } = await supabase.from('trees').delete().eq('id', tree.id);
+          if(error){ alert('Xatolik: ' + error.message); return; }
+          db.trees = db.trees.filter(t=>t.id!==tree.id);
+          renderHome();
+        }
+      });
+      treesGrid.appendChild(card);
+    });
+    const addCard = document.createElement('div');
+    addCard.className = 'tree-card';
+    addCard.innerHTML = `<div class="add-tree-circle">+</div><div class="tname" style="color:var(--ink-faint)">Yangi shajara</div>`;
+    addCard.querySelector('.add-tree-circle').addEventListener('click', ()=>{
+      document.getElementById('newTreeName').value = '';
+      openOverlay('overlayNewTree');
+      setTimeout(()=>document.getElementById('newTreeName').focus(), 60);
+    });
+    treesGrid.appendChild(addCard);
+  }
+
+  document.getElementById('btnCreateTree').addEventListener('click', async ()=>{
+    const name = document.getElementById('newTreeName').value.trim();
+    if(!name){ document.getElementById('newTreeName').focus(); return; }
+    const { data, error } = await supabase.from('trees').insert({ name, user_id: currentUser.id }).select().single();
+    if(error){ alert('Xatolik: ' + error.message); return; }
+    const tree = { id:data.id, name:data.name, rootId:null, persons:{}, _count:0 };
+    db.trees.push(tree);
+    closeOverlay('overlayNewTree');
+    renderHome();
+    openTree(tree.id);
+  });
+  document.getElementById('newTreeName').addEventListener('keydown', e=>{ if(e.key === 'Enter') document.getElementById('btnCreateTree').click(); });
+
+  /* ===================== TREE VIEW ===================== */
+  let currentTree = null;
+  let zoom = 1, panX = 60, panY = 40;
+  const treeInner = document.getElementById('treeInner');
+  const treeViewport = document.getElementById('treeViewport');
+  const treeSvg = document.getElementById('treeSvg');
+  const emptyState = document.getElementById('emptyState');
+  const treeLoading = document.getElementById('treeLoading');
+  const SLOT_W = 176, ROW_H = 190, AV_R = 42;
+
+  function rowToPerson(r){
+    return { id:r.id, firstName:r.first_name, lastName:r.last_name, year:r.year, gender:r.gender, photo:r.photo, spouseId:r.spouse_id, childrenIds:r.children_ids||[] };
+  }
+
+  async function openTree(id){
+    const tree = db.trees.find(t=>t.id===id);
+    if(!tree) return;
+    currentTree = tree;
+    zoom = 1; panX = 60; panY = 40;
+    showScreen('tree');
+    document.getElementById('treeTitle').textContent = tree.name;
+    emptyState.classList.add('hidden');
+    treeLoading.classList.remove('hidden');
+    treeInner.querySelectorAll('.person').forEach(n=>n.remove());
+    treeSvg.innerHTML = '';
+
+    const { data, error } = await supabase.from('persons').select('*').eq('tree_id', id);
+    treeLoading.classList.add('hidden');
+    if(error){ alert('Xatolik: ' + error.message); return; }
+    const map = {};
+    (data||[]).forEach(r => { map[r.id] = rowToPerson(r); });
+    tree.persons = map;
+    renderTreeMeta();
+    renderTree();
+  }
+
+  function renderTreeMeta(){
+    document.getElementById('treeSub').textContent = Object.keys(currentTree.persons).length + " kishi";
+  }
+
+  document.getElementById('btnBack').addEventListener('click', ()=>{ showScreen('home'); refreshHome(); });
+
+  const treeTitleEl = document.getElementById('treeTitle');
+  treeTitleEl.addEventListener('click', ()=>{
+    const input = document.createElement('input');
+    input.type = 'text'; input.value = currentTree.name;
+    input.style.cssText = "font-family:var(--font-display);font-weight:600;font-size:26px;background:var(--bg-card);border:1px solid var(--gold-dim);border-radius:8px;color:var(--ink);padding:2px 8px;width:280px;max-width:60vw;";
+    treeTitleEl.replaceWith(input);
+    input.focus(); input.select();
+    async function commit(){
+      const v = input.value.trim() || currentTree.name;
+      if(v !== currentTree.name){
+        currentTree.name = v;
+        const { error } = await supabase.from('trees').update({ name: v }).eq('id', currentTree.id);
+        if(error) alert('Xatolik: ' + error.message);
+      }
+      treeTitleEl.textContent = currentTree.name;
+      input.replaceWith(treeTitleEl);
+    }
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', e=>{ if(e.key==='Enter') input.blur(); });
+  });
+
+  function applyTransform(){
+    treeInner.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+    document.getElementById('zoomPct').textContent = Math.round(zoom*100) + '%';
+  }
+  document.getElementById('btnZoomIn').addEventListener('click', ()=>{ zoom = Math.min(1.8, zoom+0.12); applyTransform(); });
+  document.getElementById('btnZoomOut').addEventListener('click', ()=>{ zoom = Math.max(0.35, zoom-0.12); applyTransform(); });
+  document.getElementById('btnZoomReset').addEventListener('click', ()=>{ zoom = 1; panX = 60; panY = 40; applyTransform(); });
+
+  let dragging = false, dragStartX=0, dragStartY=0, panStartX=0, panStartY=0;
+  treeViewport.addEventListener('pointerdown', (e)=>{
+    if(e.target.closest('.person') || e.target.closest('.icon-btn')) return;
+    dragging = true; treeViewport.classList.add('grabbing');
+    dragStartX = e.clientX; dragStartY = e.clientY; panStartX = panX; panStartY = panY;
+    treeViewport.setPointerCapture(e.pointerId);
+  });
+  treeViewport.addEventListener('pointermove', (e)=>{
+    if(!dragging) return;
+    panX = panStartX + (e.clientX - dragStartX); panY = panStartY + (e.clientY - dragStartY);
+    applyTransform();
+  });
+  ['pointerup','pointercancel'].forEach(ev=>{ treeViewport.addEventListener(ev, ()=>{ dragging=false; treeViewport.classList.remove('grabbing'); }); });
+  treeViewport.addEventListener('wheel', (e)=>{
+    if(!e.ctrlKey) return; e.preventDefault();
+    zoom = Math.max(0.35, Math.min(1.8, zoom - e.deltaY*0.001)); applyTransform();
+  }, { passive:false });
+
+  function computeLayout(tree){
+    const persons = tree.persons; const positions = {}; const visited = new Set(); let cursor = 0;
+    function childrenOf(person, spouse){
+      const set = new Set();
+      (person.childrenIds||[]).forEach(id=>set.add(id));
+      if(spouse) (spouse.childrenIds||[]).forEach(id=>set.add(id));
+      return Array.from(set);
+    }
+    function layout(personId, depth){
+      if(visited.has(personId)) return positions[personId] ? positions[personId].x : cursor;
+      const person = persons[personId]; if(!person) return cursor;
+      visited.add(personId);
+      const spouse = person.spouseId ? persons[person.spouseId] : null;
+      if(spouse) visited.add(spouse.id);
+      const kids = childrenOf(person, spouse).filter(id=>persons[id]);
+      if(kids.length === 0){
+        const x = cursor; cursor += spouse ? 2 : 1;
+        if(spouse){ positions[person.id] = { x, depth }; positions[spouse.id] = { x:x+1, depth }; return x + 0.5; }
+        positions[person.id] = { x, depth }; return x;
+      }else{
+        const centers = kids.map(kid => layout(kid, depth+1));
+        const center = centers.reduce((a,b)=>a+b,0) / centers.length;
+        if(spouse){ positions[person.id] = { x:center-0.5, depth }; positions[spouse.id] = { x:center+0.5, depth }; }
+        else{ positions[person.id] = { x:center, depth }; }
+        return center;
+      }
+    }
+    if(tree.rootId && persons[tree.rootId]) layout(tree.rootId, 0);
+    return positions;
+  }
+
+  function renderTree(){
+    treeInner.querySelectorAll('.person').forEach(n=>n.remove());
+    treeSvg.innerHTML = '';
+    const persons = currentTree.persons;
+    const hasAny = Object.keys(persons).length > 0;
+    emptyState.classList.toggle('hidden', hasAny);
+    if(!hasAny){ applyTransform(); return; }
+
+    const positions = computeLayout(currentTree);
+    let maxX = 0, maxDepth = 0;
+    Object.values(positions).forEach(p=>{ maxX = Math.max(maxX, p.x); maxDepth = Math.max(maxDepth, p.depth); });
+    const px = id => positions[id].x * SLOT_W + SLOT_W/2;
+    const py = id => positions[id].depth * ROW_H + ROW_H/2;
+    const svgW = (maxX+1.6) * SLOT_W, svgH = (maxDepth+1) * ROW_H + 60;
+    treeSvg.setAttribute('width', svgW); treeSvg.setAttribute('height', svgH);
+    treeSvg.setAttribute('viewBox', `0 0 ${svgW} ${svgH}`);
+    treeInner.style.width = svgW + 'px'; treeInner.style.height = svgH + 'px';
+
+    const ns = 'http://www.w3.org/2000/svg';
+    function svgEl(tag, attrs){ const el = document.createElementNS(ns, tag); for(const k in attrs) el.setAttribute(k, attrs[k]); return el; }
+
+    const drawnCouples = new Set();
+    Object.keys(persons).forEach(id=>{
+      const p = persons[id];
+      if(p.spouseId && persons[p.spouseId] && !drawnCouples.has([id,p.spouseId].sort().join('|'))){
+        drawnCouples.add([id,p.spouseId].sort().join('|'));
+        const x1 = px(id), y1 = py(id), x2 = px(p.spouseId);
+        treeSvg.appendChild(svgEl('line', { class:'spouse-line', x1: x1+AV_R, y1, x2: x2-AV_R, y2:y1 }));
+        treeSvg.appendChild(svgEl('circle', { class:'spouse-dot', cx:(x1+x2)/2, cy:y1, r:4 }));
+      }
+    });
+
+    const handledFamilies = new Set();
+    Object.keys(persons).forEach(id=>{
+      const p = persons[id];
+      const spouse = p.spouseId ? persons[p.spouseId] : null;
+      const famKey = spouse ? [id, p.spouseId].sort().join('|') : id;
+      const kidsSet = new Set(p.childrenIds||[]);
+      if(spouse) (spouse.childrenIds||[]).forEach(k=>kidsSet.add(k));
+      const kids = Array.from(kidsSet).filter(k=>persons[k]);
+      if(kids.length === 0 || handledFamilies.has(famKey)) return;
+      handledFamilies.add(famKey);
+      const parentX = spouse ? (px(id)+px(spouse.id))/2 : px(id);
+      const parentY = py(id) + AV_R;
+      const busY = parentY + (ROW_H - AV_R*2) / 2;
+      treeSvg.appendChild(svgEl('line', { class:'link-line lineage', x1:parentX, y1:parentY, x2:parentX, y2:busY }));
+      const kidXs = kids.map(k=>px(k));
+      const minX = Math.min(...kidXs), maxXk = Math.max(...kidXs);
+      if(kids.length > 1) treeSvg.appendChild(svgEl('line', { class:'link-line', x1:minX, y1:busY, x2:maxXk, y2:busY }));
+      kids.forEach(k=>{
+        const kx = px(k), ky = py(k) - AV_R;
+        treeSvg.appendChild(svgEl('line', { class:'link-line', x1:kx, y1:busY, x2:kx, y2:ky }));
+      });
+    });
+
+    Object.keys(persons).forEach(id=>{
+      const p = persons[id];
+      const node = document.createElement('div');
+      node.className = 'person'; node.style.left = px(id) + 'px'; node.style.top = py(id) + 'px'; node.dataset.id = id;
+      const genderClass = p.gender === 'F' ? 'f' : '';
+      const avatarInner = p.photo ? `<img src="${p.photo}" alt="">` : initials(p.firstName, p.lastName);
+      node.innerHTML = `
+        <div class="avatar-wrap">
+          <div class="avatar ${genderClass}" data-edit="${id}">${avatarInner}</div>
+          <div class="add-rel-btn" data-add="${id}">+</div>
+        </div>
+        <div class="p-name">${escapeHtml(fullName(p)) || 'Ism kiritilmagan'}</div>
+        <div class="p-meta">${escapeHtml(p.year||'')}</div>
+      `;
+      treeInner.appendChild(node);
+    });
+
+    treeInner.querySelectorAll('[data-add]').forEach(btn=>{ btn.addEventListener('click', (e)=>{ e.stopPropagation(); openRelPopover(btn.dataset.add, btn); }); });
+    treeInner.querySelectorAll('[data-edit]').forEach(btn=>{ btn.addEventListener('click', (e)=>{ e.stopPropagation(); openPersonForm('edit', { personId: btn.dataset.edit }); }); });
+
+    applyTransform();
+    renderTreeMeta();
+  }
+
+  document.getElementById('btnAddFounder').addEventListener('click', ()=> openPersonForm('founder', {}));
+
+  const relPopover = document.getElementById('relPopover');
+  function openRelPopover(personId, btnEl){
+    const p = currentTree.persons[personId];
+    const rect = btnEl.getBoundingClientRect();
+    let html = '';
+    if(!p.spouseId){
+      const label = p.gender === 'F' ? "Eri (turmush o'rtog'i) qo'shish" : "Ayoli (turmush o'rtog'i) qo'shish";
+      html += `<button data-action="spouse"><span class="pop-ic">♥</span>${label}</button>`;
+    }
+    html += `<button data-action="child"><span class="pop-ic">↓</span>Farzand qo'shish</button>`;
+    relPopover.innerHTML = html;
+    relPopover.style.left = Math.min(rect.left, window.innerWidth-210) + 'px';
+    relPopover.style.top = (rect.bottom + 8) + 'px';
+    relPopover.classList.remove('hidden');
+    relPopover.querySelectorAll('button').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const action = b.dataset.action; relPopover.classList.add('hidden');
+        if(action === 'spouse') openPersonForm('spouse', { personId });
+        else openPersonForm('child', { personId });
+      });
+    });
+  }
+  document.addEventListener('click', (e)=>{
+    if(!relPopover.contains(e.target) && !e.target.closest('[data-add]')) relPopover.classList.add('hidden');
+  });
+
+  let formMode = null, formContext = {}, formPhoto = null, formGender = 'M';
+  const elGenderM = document.getElementById('genderM'), elGenderF = document.getElementById('genderF');
+  const elFieldGender = document.getElementById('fieldGender');
+  const elFirstName = document.getElementById('personFirstName'), elLastName = document.getElementById('personLastName');
+  const elYear = document.getElementById('personYear');
+  const elPhotoPreview = document.getElementById('photoPreview'), elPhotoInput = document.getElementById('photoInput');
+  const elFormTitle = document.getElementById('personFormTitle'), elFormSub = document.getElementById('personFormSub');
+  const elDeleteRow = document.getElementById('deleteRow');
+
+  function setGender(g){ formGender = g; elGenderM.classList.toggle('sel', g==='M'); elGenderF.classList.toggle('sel', g==='F'); }
+  elGenderM.addEventListener('click', ()=>setGender('M'));
+  elGenderF.addEventListener('click', ()=>setGender('F'));
+  elPhotoInput.addEventListener('change', (e)=>{
+    const file = e.target.files[0]; if(!file) return;
+    resizeImage(file, 200, (dataUrl)=>{ formPhoto = dataUrl; elPhotoPreview.innerHTML = `<img src="${dataUrl}" alt="">`; });
+  });
+
+  function guessSurname(treeName){ const n = (treeName||'').trim(); if(/lar$/i.test(n)) return n.slice(0,-3); return n; }
+
+  function openPersonForm(mode, ctx){
+    formMode = mode; formContext = ctx; formPhoto = null;
+    elFirstName.value = ''; elLastName.value = ''; elYear.value = '';
+    elPhotoPreview.innerHTML = '—'; elDeleteRow.classList.add('hidden'); elFieldGender.classList.remove('hidden');
+
+    if(mode === 'founder'){
+      elFormTitle.textContent = "Asoschini qo'shish";
+      elFormSub.textContent = "Shajaraning ilk ajdodi haqida ma'lumot kiriting";
+      setGender('M'); elLastName.value = guessSurname(currentTree.name);
+    }else if(mode === 'spouse'){
+      const p = currentTree.persons[ctx.personId];
+      const oppGender = p.gender === 'F' ? 'M' : 'F';
+      elFormTitle.textContent = oppGender === 'M' ? "Erini qo'shish" : "Ayolini qo'shish";
+      elFormSub.textContent = fullName(p) + " bilan turmush qurgan shaxs";
+      setGender(oppGender); elFieldGender.classList.add('hidden');
+      elLastName.value = oppGender === 'M' ? guessSurname(currentTree.name) : (p.lastName||'');
+    }else if(mode === 'child'){
+      const p = currentTree.persons[ctx.personId];
+      elFormTitle.textContent = "Farzand qo'shish";
+      elFormSub.textContent = fullName(p) + "ning farzandi";
+      setGender('M'); elLastName.value = p.lastName || guessSurname(currentTree.name);
+    }else if(mode === 'edit'){
+      const p = currentTree.persons[ctx.personId];
+      elFormTitle.textContent = "Ma'lumotlarni tahrirlash"; elFormSub.textContent = '';
+      setGender(p.gender || 'M');
+      elFirstName.value = p.firstName || ''; elLastName.value = p.lastName || ''; elYear.value = p.year || '';
+      formPhoto = p.photo || null;
+      if(p.photo) elPhotoPreview.innerHTML = `<img src="${p.photo}" alt="">`;
+      const hasKids = (p.childrenIds||[]).length > 0;
+      elDeleteRow.classList.remove('hidden');
+      const btnDel = document.getElementById('btnDeletePerson');
+      btnDel.textContent = hasKids ? "Farzandlari mavjud — avval ularni o'chiring" : "Bu shaxsni o'chirish";
+      btnDel.disabled = hasKids; btnDel.style.opacity = hasKids ? .45 : 1; btnDel.style.cursor = hasKids ? 'not-allowed' : 'pointer';
+    }
+    openOverlay('overlayPerson');
+    setTimeout(()=>elFirstName.focus(), 60);
+  }
+
+  document.getElementById('btnSavePerson').addEventListener('click', async ()=>{
+    const firstName = elFirstName.value.trim();
+    if(!firstName){ elFirstName.focus(); return; }
+    const lastName = elLastName.value.trim(), year = elYear.value.trim();
+    const btn = document.getElementById('btnSavePerson');
+    btn.disabled = true;
+    try{
+      if(formMode === 'edit'){
+        const p = currentTree.persons[formContext.personId];
+        const { error } = await supabase.from('persons').update({
+          first_name:firstName, last_name:lastName, year, gender:formGender, photo:formPhoto
+        }).eq('id', p.id);
+        if(error) throw error;
+        p.firstName=firstName; p.lastName=lastName; p.year=year; p.gender=formGender; p.photo=formPhoto;
+        closeOverlay('overlayPerson'); renderTree();
+        return;
+      }
+
+      if(formMode === 'founder'){
+        const { data, error } = await supabase.from('persons').insert({
+          tree_id: currentTree.id, first_name:firstName, last_name:lastName, year, gender:formGender, photo:formPhoto
+        }).select().single();
+        if(error) throw error;
+        currentTree.persons[data.id] = rowToPerson(data);
+        currentTree.rootId = data.id;
+        const { error: e2 } = await supabase.from('trees').update({ root_id: data.id }).eq('id', currentTree.id);
+        if(e2) throw e2;
+      }
+      else if(formMode === 'spouse'){
+        const p = currentTree.persons[formContext.personId];
+        const { data, error } = await supabase.from('persons').insert({
+          tree_id: currentTree.id, first_name:firstName, last_name:lastName, year, gender:formGender, photo:formPhoto, spouse_id:p.id
+        }).select().single();
+        if(error) throw error;
+        currentTree.persons[data.id] = rowToPerson(data);
+        const { error: e2 } = await supabase.from('persons').update({ spouse_id: data.id }).eq('id', p.id);
+        if(e2) throw e2;
+        p.spouseId = data.id;
+      }
+      else if(formMode === 'child'){
+        const p = currentTree.persons[formContext.personId];
+        const spouse = p.spouseId ? currentTree.persons[p.spouseId] : null;
+        const { data, error } = await supabase.from('persons').insert({
+          tree_id: currentTree.id, first_name:firstName, last_name:lastName, year, gender:formGender, photo:formPhoto
+        }).select().single();
+        if(error) throw error;
+        currentTree.persons[data.id] = rowToPerson(data);
+        const newChildren = (p.childrenIds||[]).concat([data.id]);
+        const { error: e2 } = await supabase.from('persons').update({ children_ids: newChildren }).eq('id', p.id);
+        if(e2) throw e2;
+        p.childrenIds = newChildren;
+        if(spouse){
+          const newChildren2 = (spouse.childrenIds||[]).concat([data.id]);
+          const { error: e3 } = await supabase.from('persons').update({ children_ids: newChildren2 }).eq('id', spouse.id);
+          if(e3) throw e3;
+          spouse.childrenIds = newChildren2;
+        }
+      }
+      closeOverlay('overlayPerson');
+      renderTree();
+    }catch(err){
+      alert('Xatolik: ' + err.message);
+    }finally{
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('btnDeletePerson').addEventListener('click', async ()=>{
+    const p = currentTree.persons[formContext.personId];
+    if((p.childrenIds||[]).length > 0) return;
+    if(!confirm(`${fullName(p)}ni o'chirmoqchimisiz?`)) return;
+    try{
+      const { error } = await supabase.from('persons').delete().eq('id', p.id);
+      if(error) throw error;
+
+      if(p.spouseId && currentTree.persons[p.spouseId]){
+        const { error: e2 } = await supabase.from('persons').update({ spouse_id:null }).eq('id', p.spouseId);
+        if(e2) throw e2;
+        currentTree.persons[p.spouseId].spouseId = null;
+      }
+      for(const person of Object.values(currentTree.persons)){
+        if((person.childrenIds||[]).includes(p.id)){
+          const newChildren = person.childrenIds.filter(cid=>cid!==p.id);
+          const { error: e3 } = await supabase.from('persons').update({ children_ids:newChildren }).eq('id', person.id);
+          if(e3) throw e3;
+          person.childrenIds = newChildren;
+        }
+      }
+      if(currentTree.rootId === p.id){
+        delete currentTree.persons[p.id];
+        const remaining = Object.keys(currentTree.persons);
+        currentTree.rootId = remaining.length ? remaining[0] : null;
+        const { error: e4 } = await supabase.from('trees').update({ root_id: currentTree.rootId }).eq('id', currentTree.id);
+        if(e4) throw e4;
+      }else{
+        delete currentTree.persons[p.id];
+      }
+      closeOverlay('overlayPerson');
+      renderTree();
+    }catch(err){
+      alert('Xatolik: ' + err.message);
+    }
+  });
+
+  /* ===================== INIT ===================== */
+  (async function init(){
+    const { data:{ session } } = await supabase.auth.getSession();
+    if(session){ await onAuthed(); }
+    else{ showScreen('auth'); }
+  })();
+
+})();
+</script>
+</body>
+</html>
