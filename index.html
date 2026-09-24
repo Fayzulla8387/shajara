@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('shajara-theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Shajara — Oilaviy daraxt</title>
@@ -11,30 +12,51 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   :root{
-    --bg:#14171E; --bg-soft:#1B1F28; --bg-card:#232833; --bg-card-hi:#2A303C;
-    --line:#333947; --line-soft:#282D38;
-    --ink:#EEE8DC; --ink-dim:#9B9689; --ink-faint:#68697A;
-    --gold:#C9A961; --gold-hi:#DDBE7C; --gold-dim:#8B6F3E;
-    --rose:#C17E90; --blue:#6E93B4; --danger:#C1616B; --danger-hi:#D97D86;
+    --bg:#1B1F29; --bg-soft:#242A38; --bg-card:#2C3345; --bg-card-hi:#353D50;
+    --line:#454E63; --line-soft:#333B4D;
+    --ink:#F6F1E7; --ink-dim:#B0AB9D; --ink-faint:#7C7D8F;
+    --gold:#DDBB76; --gold-hi:#EDD696; --gold-dim:#A3854D;
+    --rose:#D794A6; --blue:#84A8C9; --danger:#D6767F; --danger-hi:#E6939B;
+    --glow-1:#252C3D; --glow-2:#232C38;
     --r-lg:26px; --r-md:16px; --r-sm:10px;
     --shadow: 0 24px 60px -24px rgba(0,0,0,.65);
     --font-display:'Fraunces', serif; --font-body:'Inter', sans-serif;
+  }
+  :root[data-theme="light"]{
+    --bg:#F6F2E9; --bg-soft:#FFFFFF; --bg-card:#FBF8F2; --bg-card-hi:#F1EADA;
+    --line:#E1D8C4; --line-soft:#EAE3D2;
+    --ink:#2C2721; --ink-dim:#6E6455; --ink-faint:#9C9280;
+    --gold:#B18841; --gold-hi:#8F6C31; --gold-dim:#D7BC85;
+    --rose:#A85B70; --blue:#3E6C90; --danger:#B33B45; --danger-hi:#8F2C34;
+    --glow-1:#EFE7D4; --glow-2:#F1E9DC;
+    --shadow: 0 24px 50px -24px rgba(60,50,30,.28);
   }
   *{box-sizing:border-box;}
   html,body{height:100%;}
   body{
     margin:0;
     background:
-      radial-gradient(1200px 600px at 15% -10%, #1E2330 0%, transparent 60%),
-      radial-gradient(1000px 700px at 110% 10%, #1B222C 0%, transparent 55%),
+      radial-gradient(1200px 600px at 15% -10%, var(--glow-1) 0%, transparent 60%),
+      radial-gradient(1000px 700px at 110% 10%, var(--glow-2) 0%, transparent 55%),
       var(--bg);
     color:var(--ink); font-family:var(--font-body); -webkit-font-smoothing:antialiased; overflow:hidden;
+    transition: background-color .3s, color .3s;
   }
   ::selection{ background:var(--gold); color:#1a1a1a; }
   button{ font-family:inherit; cursor:pointer; }
   input, select{ font-family:inherit; }
   :focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
   @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+
+  .theme-toggle{
+    position:fixed; top:18px; right:18px; z-index:150;
+    width:42px; height:42px; border-radius:50%; border:1px solid var(--line);
+    background:var(--bg-card); color:var(--ink); font-size:18px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:var(--shadow); transition:background .2s, transform .15s, border-color .2s;
+  }
+  .theme-toggle:hover{ border-color:var(--gold-dim); transform:scale(1.06); }
+  .theme-toggle:active{ transform:scale(.94); }
 
   #app{ position:relative; width:100vw; height:100vh; }
   .screen{ position:absolute; inset:0; display:none; }
@@ -63,7 +85,7 @@
   #screen-home{ overflow-y:auto; }
   .home-topbar{
     display:flex; align-items:center; justify-content:flex-end; gap:12px;
-    padding:22px 32px 0; max-width:1100px; margin:0 auto;
+    padding:22px 76px 0 32px; max-width:1100px; margin:0 auto;
   }
   .user-pill{
     display:flex; align-items:center; gap:10px; background:var(--bg-card); border:1px solid var(--line);
@@ -108,8 +130,8 @@
   /* ---------- TREE VIEW ---------- */
   #screen-tree.active{ display:flex; flex-direction:column; }
   .tree-topbar{
-    display:flex; align-items:center; gap:18px; padding:20px 28px; border-bottom:1px solid var(--line-soft);
-    background:linear-gradient(var(--bg-soft), rgba(27,31,40,.85)); z-index:5;
+    display:flex; align-items:center; gap:18px; padding:20px 76px 20px 28px; border-bottom:1px solid var(--line-soft);
+    background:linear-gradient(var(--bg-soft), var(--bg-soft)); z-index:5;
   }
   .icon-btn{
     width:40px; height:40px; border-radius:50%; border:1px solid var(--line); background:var(--bg-card);
@@ -236,6 +258,8 @@
 </head>
 <body>
 
+<button class="theme-toggle" id="btnThemeToggle" title="Kun/tun rejimi">🌙</button>
+
 <div id="app">
 
   <!-- ============ AUTH ============ -->
@@ -358,6 +382,22 @@
 const SUPABASE_URL = "https://umvtpirqhspihqqzjpct.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_PWxmvuqGh3laZjMCPTTSvA_7kgOGEXU";
 
+/* Kun/tun rejimi tugmasi (rejimning o'zi <head>da allaqachon o'rnatilgan) */
+(function(){
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const btn = document.getElementById('btnThemeToggle');
+    if(!btn) return;
+    function updateIcon(){ btn.textContent = document.documentElement.getAttribute('data-theme') === 'light' ? '☀️' : '🌙'; }
+    updateIcon();
+    btn.addEventListener('click', ()=>{
+      const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('shajara-theme', next);
+      updateIcon();
+    });
+  });
+})();
+
 (function(){
   "use strict";
 
@@ -383,7 +423,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_PWxmvuqGh3laZjMCPTTSvA_7kgOGEXU";
   function fullName(p){ return [p.firstName, p.lastName].filter(Boolean).join(' '); }
   function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
   const PALETTES = [
-    ['#3A3020','#C9A961'], ['#20303A','#6E93B4'], ['#3A2028','#C17E90'],
+    ['#3A3020','#DDBB76'], ['#20303A','#84A8C9'], ['#3A2028','#D794A6'],
     ['#2A3A28','#8FAE7E'], ['#332438','#A889C4'], ['#3A2F20','#D0A85C']
   ];
   function paletteFor(name){
@@ -635,19 +675,19 @@ const SUPABASE_ANON_KEY = "sb_publishable_PWxmvuqGh3laZjMCPTTSvA_7kgOGEXU";
       clone.style.position = 'relative';
 
       const wrapper = document.createElement('div');
-      wrapper.style.cssText = 'position:fixed; left:-99999px; top:0; background:#14171E; padding:70px 60px 80px; display:inline-block;';
+      wrapper.style.cssText = 'position:fixed; left:-99999px; top:0; background:#1B1F29; padding:70px 60px 80px; display:inline-block;';
       const header = document.createElement('div');
       header.style.cssText = 'text-align:center; margin-bottom:36px;';
       header.innerHTML =
-        `<div style="font-family:'Fraunces',serif; font-weight:600; font-size:54px; color:#EEE8DC;">${escapeHtml(currentTree.name)}</div>` +
-        `<div style="width:72px;height:2px;background:#C9A961;margin:20px auto;"></div>` +
-        `<div style="font-family:'Fraunces',serif; font-style:italic; color:#9B9689; font-size:18px;">Oilaviy shajara</div>`;
+        `<div style="font-family:'Fraunces',serif; font-weight:600; font-size:54px; color:#F6F1E7;">${escapeHtml(currentTree.name)}</div>` +
+        `<div style="width:72px;height:2px;background:#DDBB76;margin:20px auto;"></div>` +
+        `<div style="font-family:'Fraunces',serif; font-style:italic; color:#B0AB9D; font-size:18px;">Oilaviy shajara</div>`;
       wrapper.appendChild(header);
       wrapper.appendChild(clone);
       document.body.appendChild(wrapper);
 
       await new Promise(r=>setTimeout(r, 80));
-      const canvas = await html2canvas(wrapper, { backgroundColor:'#14171E', scale:2, useCORS:true });
+      const canvas = await html2canvas(wrapper, { backgroundColor:'#1B1F29', scale:2, useCORS:true });
       document.body.removeChild(wrapper);
 
       const link = document.createElement('a');
